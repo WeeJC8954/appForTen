@@ -8,6 +8,8 @@ Two tabs after login:
 - **Pokédex**: search Pokémon (data from [PokeAPI](https://pokeapi.co)), see artwork, types and base stats,
   and save a team of up to 6 to your account.
 
+**Live site:** https://weejc8954.github.io/appForTen/
+
 ## One-time Firebase setup (in the console)
 
 1. https://console.firebase.google.com → **Add project**.
@@ -35,9 +37,22 @@ firebase serve --only hosting   # http://localhost:5000
 
 ## Publish
 
-```powershell
-firebase deploy --only hosting
-```
+**GitHub Pages (automatic):** every push to `main` that changes `public/` runs
+`.github/workflows/pages.yml`, which publishes `public/` to https://weejc8954.github.io/appForTen/.
+To redeploy without a change: **Actions → Deploy to GitHub Pages → Run workflow**, or
+`gh workflow run pages.yml`.
+
+Database rules and indexes are **not** part of that workflow. After changing `firestore.rules` or
+`firestore.indexes.json`, run `firebase deploy --only firestore` yourself.
+
+**Firebase Hosting (optional alternative):** `firebase deploy --only hosting` publishes the same folder to
+https://appforten-9ec32.web.app.
+
+## Contributing
+
+Never commit straight to `main`. Make changes on a branch and open a PR. A Claude code review runs on each PR
+(`.github/workflows/claude-code-review.yml`), and mentioning `@claude` in a PR or issue starts Claude
+(`.github/workflows/claude.yml`).
 
 ## Layout
 
@@ -47,3 +62,4 @@ firebase deploy --only hosting
 | `firestore.rules` | Security rules — users can only read/write their own `notes` and `teams/{uid}` |
 | `firestore.indexes.json` | Composite index for the `owner + created` query |
 | `firebase.json` | Firebase CLI config (hosting + firestore) |
+| `.github/workflows/` | GitHub Actions: Pages deploy, Claude PR review, `@claude` mentions |
