@@ -2,7 +2,7 @@ import { db, doc, onSnapshot, runTransaction, serverTimestamp } from "./firebase
 import { $, showMessage, errorText, el } from "./ui.js"
 
 const API = "https://pokeapi.co/api/v2"
-const MAX_TEAM = 6
+const MAX_TEAM = 6 // keep in sync with the team size checks in firestore.rules
 const MAX_DEX_ID = 1025 // national dex; higher ids are alternate forms (10001+)
 const STAT_LABELS = {
   hp: "HP", attack: "Atk", defense: "Def", "special-attack": "SpA", "special-defense": "SpD", speed: "Spe",
@@ -108,7 +108,7 @@ function renderAddButton() {
   const inTeam = team.some((m) => m.id === current.id)
   const full = team.length >= MAX_TEAM
   add.disabled = inTeam || full
-  add.textContent = inTeam ? "On your team" : full ? "Team full (6/6)" : "Add to team"
+  add.textContent = inTeam ? "On your team" : full ? `Team full (${MAX_TEAM}/${MAX_TEAM})` : "Add to team"
 }
 
 function renderTeam() {
@@ -130,13 +130,15 @@ function renderTeam() {
   $("team").replaceChildren(...slots)
 }
 
-// Read-modify-write in a transaction so the 6-member cap and no-duplicates hold across tabs.
+// Read-modify-write in a transaction so the MAX_TEAM cap and no-duplicates hold across tabs.
 async function updateTeam(change) {
+  const ref = teamRef // stays valid if the user signs out while the transaction runs or retries
+  if (!ref) return
   try {
     await runTransaction(db, async (tx) => {
-      const snap = await tx.get(teamRef)
+      const snap = await tx.get(ref)
       const members = change(snap.exists() ? snap.data().members : [])
-      tx.set(teamRef, { members, updated: serverTimestamp() })
+      tx.set(ref, { members, updated: serverTimestamp() })
     })
   } catch (err) {
     showMessage(errorText(err), true)
@@ -146,7 +148,7 @@ async function updateTeam(change) {
 function addToTeam(p) {
   return updateTeam((members) => {
     if (members.some((m) => m.id === p.id)) throw new Error(`${displayName(p.name)} is already on your team`)
-    if (members.length >= MAX_TEAM) throw new Error("Your team is full (6 max)")
+    if (members.length >= MAX_TEAM) throw new Error(`Your team is full (${MAX_TEAM} max)`)
     return [...members, { id: p.id, name: p.name, sprite: p.sprite, types: p.types }]
   })
 }
@@ -168,6 +170,7 @@ export function startPokedex(user) {
 }
 
 export function stopPokedex() {
+  requestSeq++ // discard searches still in flight
   unsubscribeTeam?.()
   unsubscribeTeam = null
   teamRef = null

@@ -49,7 +49,8 @@ Native ES modules in `public/`, no bundler:
 
 Data model:
 - `notes/{autoId}`: `{ text, owner: <auth uid>, created: serverTimestamp() }`
-- `teams/{uid}`: `{ members: [{ id, name, sprite, types }], updated }`. One document per user, at most 6 members.
+- `teams/{uid}`: `{ members: [{ id, name, sprite, types }], updated }`. One document per user, at most 6 members
+  (`MAX_TEAM` in `pokedex.js`, kept in sync with `firestore.rules` by hand).
   Writes go through `runTransaction` in `pokedex.js`, so the cap and no-duplicates checks hold across tabs; the
   rules enforce both as well.
 
@@ -59,8 +60,8 @@ Data model:
   whole query is rejected.
 - There is no `update` rule, so notes are currently create/delete only — adding editing needs a rule change.
 - `create` requires exactly the keys `text`, `owner`, `created`: `owner == request.auth.uid`, `text` a string of
-  1–2000 chars (mirrored by `required maxlength` in the HTML), and `created == request.time` (i.e. the client
-  must send `serverTimestamp()`). A new field must be added to the rule's key list.
+  1–2000 chars (mirrored by `MAX_NOTE` in `notes.js`, which sets the input's `maxLength`), and
+  `created == request.time` (i.e. the client must send `serverTimestamp()`). A new field must be added to the rule's key list.
 - The `owner ==` + `orderBy("created", "desc")` query needs the composite index in `firestore.indexes.json`.
   Any new compound query needs an index added there, then `firebase deploy --only firestore`.
 - `teams/{uid}` is readable and writable only by that uid. Writes must contain exactly `members` and `updated`

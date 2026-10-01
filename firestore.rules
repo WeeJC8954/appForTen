@@ -12,7 +12,7 @@ service cloud.firestore {
         && request.resource.data.owner == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 2000
+        && request.resource.data.text.size() <= 2000 // keep in sync with MAX_NOTE in public/notes.js
         && request.resource.data.created == request.time;
     }
 
@@ -34,6 +34,8 @@ service cloud.firestore {
             'steel', 'fairy', 'stellar', 'unknown', 'shadow']);
       }
 
+      // The team cap (6) must match MAX_TEAM in public/pokedex.js; changing it means updating
+      // validMembers, the validSlot calls and distinctIds.
       // The rules language has no loops, so each of the 6 slots is checked by index.
       function validSlot(ms, i) {
         return ms.size() <= i || validMember(ms[i]);
@@ -53,7 +55,7 @@ service cloud.firestore {
       }
 
       function validMembers(ms) {
-        return ms is list && ms.size() <= 6
+        return ms is list && ms.size() <= 6 // keep in sync with MAX_TEAM in public/pokedex.js
           && validSlot(ms, 0) && validSlot(ms, 1) && validSlot(ms, 2)
           && validSlot(ms, 3) && validSlot(ms, 4) && validSlot(ms, 5)
           && distinctIds(ms);
