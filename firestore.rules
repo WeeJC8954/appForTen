@@ -1,22 +1,70 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each signed-in user can only read/write their own notes.
+    // Each signed-in user can only read/write their own notes. Notes are create/delete only.
+    // The shape is fixed so a client can't attach extra data, back-date or future-date a note,
+    // or leave out `created` (which would hide the note from the orderBy("created") query).
     match /notes/{noteId} {
       allow read, delete: if request.auth != null && resource.data.owner == request.auth.uid;
       allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['text', 'owner', 'created'])
+        && request.resource.data.keys().hasAll(['text', 'owner', 'created'])
         && request.resource.data.owner == request.auth.uid
         && request.resource.data.text is string
-        && request.resource.data.text.size() <= 2000;
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000
+        && request.resource.data.created == request.time;
     }
 
     // One Pokédex team per user, document id = their uid.
     match /teams/{uid} {
+      // A member as written by addToTeam() in pokedex.js, with values from PokeAPI.
+      function validMember(m) {
+        return m is map
+          && m.keys().hasOnly(['id', 'name', 'sprite', 'types'])
+          && m.keys().hasAll(['id', 'name', 'sprite', 'types'])
+          && m.id is int && m.id > 0 && m.id < 100000
+          && m.name is string && m.name.matches('[a-z0-9-]{1,64}')
+          && (m.sprite == null
+            || (m.sprite is string && m.sprite.size() <= 300
+              && m.sprite.matches('https://raw[.]githubusercontent[.]com/PokeAPI/sprites/.*')))
+          && m.types is list && m.types.size() >= 1 && m.types.size() <= 2
+          && m.types.hasOnly(['normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting',
+            'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark',
+            'steel', 'fairy', 'stellar', 'unknown', 'shadow']);
+      }
+
+      // The rules language has no loops, so each of the 6 slots is checked by index.
+      function validSlot(ms, i) {
+        return ms.size() <= i || validMember(ms[i]);
+      }
+
+      // No duplicate ids. One branch per team size; pairwise checks would exceed the
+      // 1000-expression limit for a full team.
+      function distinctIds(ms) {
+        return ms.size() <= 1
+          || (ms.size() == 2 && [ms[0].id, ms[1].id].toSet().size() == 2)
+          || (ms.size() == 3 && [ms[0].id, ms[1].id, ms[2].id].toSet().size() == 3)
+          || (ms.size() == 4 && [ms[0].id, ms[1].id, ms[2].id, ms[3].id].toSet().size() == 4)
+          || (ms.size() == 5
+            && [ms[0].id, ms[1].id, ms[2].id, ms[3].id, ms[4].id].toSet().size() == 5)
+          || (ms.size() == 6
+            && [ms[0].id, ms[1].id, ms[2].id, ms[3].id, ms[4].id, ms[5].id].toSet().size() == 6);
+      }
+
+      function validMembers(ms) {
+        return ms is list && ms.size() <= 6
+          && validSlot(ms, 0) && validSlot(ms, 1) && validSlot(ms, 2)
+          && validSlot(ms, 3) && validSlot(ms, 4) && validSlot(ms, 5)
+          && distinctIds(ms);
+      }
+
       allow read, delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['members', 'updated'])
-        && request.resource.data.members is list
-        && request.resource.data.members.size() <= 6;
+        && request.resource.data.keys().hasAll(['members', 'updated'])
+        && request.resource.data.updated == request.time
+        && validMembers(request.resource.data.members);
     }
   }
 }

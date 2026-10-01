@@ -50,16 +50,26 @@ Native ES modules in `public/`, no bundler:
 Data model:
 - `notes/{autoId}`: `{ text, owner: <auth uid>, created: serverTimestamp() }`
 - `teams/{uid}`: `{ members: [{ id, name, sprite, types }], updated }`. One document per user, at most 6 members.
-  Writes go through `runTransaction` in `pokedex.js`, which enforces the cap and no duplicates.
+  Writes go through `runTransaction` in `pokedex.js`, so the cap and no-duplicates checks hold across tabs; the
+  rules enforce both as well.
 
 ### Rules, queries and indexes must change together
 
 - Firestore rules are not filters: every client query on `notes` must include `where("owner", "==", uid)` or the
   whole query is rejected.
 - There is no `update` rule, so notes are currently create/delete only — adding editing needs a rule change.
-- `create` validates `owner == request.auth.uid` and `text` is a string ≤ 2000 chars (mirrored by `maxlength`
-  in the HTML). New fields must be allowed by the rule.
+- `create` requires exactly the keys `text`, `owner`, `created`: `owner == request.auth.uid`, `text` a string of
+  1–2000 chars (mirrored by `required maxlength` in the HTML), and `created == request.time` (i.e. the client
+  must send `serverTimestamp()`). A new field must be added to the rule's key list.
 - The `owner ==` + `orderBy("created", "desc")` query needs the composite index in `firestore.indexes.json`.
   Any new compound query needs an index added there, then `firebase deploy --only firestore`.
-- `teams/{uid}` is readable and writable only by that uid. Writes may contain only `members` and `updated`, with
-  `members.size() <= 6`. Adding a field to the team document needs a rule change.
+- `teams/{uid}` is readable and writable only by that uid. Writes must contain exactly `members` and `updated`
+  (`updated == request.time`, so `serverTimestamp()`). `members` is a list of ≤ 6 with distinct `id`s, and each
+  member must be exactly `{ id, name, sprite, types }` with PokeAPI-shaped values: int `id`, slug `name`,
+  `sprite` null or a `raw.githubusercontent.com/PokeAPI/sprites/` URL, 1–2 known `types`. Adding a field to the
+  team document or a member needs a rule change. The rules language has no loops, so members are checked slot
+  by slot, and the duplicate check uses one branch per team size: pairwise checks exceeded the 1000-expression
+  limit for a full team.
+- Test rule changes against the emulator before deploying (`firebase emulators:exec --only firestore` with
+  `@firebase/rules-unit-testing`; Java is required). Denied writes there may log "maximum of 1000 expressions"
+  for diagnostics; the trailing `false for 'create'/'update'` is the actual verdict.
