@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>appForTen</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>appForTen</h1>
+
+    <section id="auth-view" hidden>
+      <form id="auth-form">
+        <input id="email" type="email" placeholder="Email" required autocomplete="email">
+        <input id="password" type="password" placeholder="Password (min 6 chars)" minlength="6" required autocomplete="current-password">
+        <div class="row">
+          <button type="submit" data-action="login">Log in</button>
+          <button type="submit" data-action="signup" class="secondary">Sign up</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="app-view" hidden>
+      <div class="row between">
+        <span>Signed in as <strong id="who"></strong></span>
+        <button id="logout" class="secondary">Log out</button>
+      </div>
+
+      <form id="note-form" class="row">
+        <input id="note-text" placeholder="Write a note…" required maxlength="2000">
+        <button type="submit">Add</button>
+      </form>
+
+      <ul id="notes"></ul>
+    </section>
+
+    <p id="msg" role="alert"></p>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
