@@ -24,13 +24,27 @@ while testing are real data.
 
 ## Architecture
 
-- `public/app.js` is the whole app. It imports the Firebase modular SDK directly from
-  `https://www.gstatic.com/firebasejs/<version>/firebase-*.js`; all imports must use the same pinned version.
-  UI is two `<section>`s in `index.html` toggled by `onAuthStateChanged`; the notes list is a live `onSnapshot`
-  query that is unsubscribed on sign-out.
-- `public/firebase-config.js` holds the public web-app config (from `firebase apps:sdkconfig WEB`). It is not
+Native ES modules in `public/`, no bundler:
+
+- `firebase.js` is the **only** file that imports the Firebase SDK (from
+  `https://www.gstatic.com/firebasejs/<version>/firebase-*.js`, pinned to one version). It initialises the app and
+  re-exports `auth`, `db` and the SDK functions the features use — import from `./firebase.js`, not gstatic.
+- `app.js` coordinates everything: `onAuthStateChanged` calls each feature's `start*(user)` on sign-in and
+  `stop*()` on sign-out (which unsubscribes its `onSnapshot` listeners), plus the auth form and tab switching.
+  A new feature module follows the same `start`/`stop` contract and gets a `data-tab` button and a
+  `<feature>-view` section in `index.html`.
+- `notes.js`: notes tab. `pokedex.js`: Pokédex tab, using data from PokeAPI (`https://pokeapi.co/api/v2`, no key):
+  `/pokemon?limit=2000` for the name datalist (cached in `sessionStorage`) and `/pokemon/{name|id}` for details.
+- `ui.js`: shared `$`, `showMessage`, `errorText`, and the `el()` DOM builder. Render user/API text with
+  `textContent` / `el()`, never `innerHTML`.
+- `firebase-config.js` holds the public web-app config (from `firebase apps:sdkconfig WEB`). It is not
   secret — `firestore.rules` is the only access control.
-- Data model: top-level `notes` collection, documents `{ text, owner: <auth uid>, created: serverTimestamp() }`.
+- The login page styling comes from `body:has(#auth-view:not([hidden]))` in `style.css`; no JS is involved.
+
+Data model:
+- `notes/{autoId}`: `{ text, owner: <auth uid>, created: serverTimestamp() }`
+- `teams/{uid}`: `{ members: [{ id, name, sprite, types }], updated }`. One document per user, at most 6 members.
+  Writes go through `runTransaction` in `pokedex.js`, which enforces the cap and no duplicates.
 
 ### Rules, queries and indexes must change together
 
@@ -41,3 +55,5 @@ while testing are real data.
   in the HTML). New fields must be allowed by the rule.
 - The `owner ==` + `orderBy("created", "desc")` query needs the composite index in `firestore.indexes.json`.
   Any new compound query needs an index added there, then `firebase deploy --only firestore`.
+- `teams/{uid}` is readable and writable only by that uid. Writes may contain only `members` and `updated`, with
+  `members.size() <= 6`. Adding a field to the team document needs a rule change.

@@ -11,6 +11,10 @@
     <h1>appForTen</h1>
 
     <section id="auth-view" hidden>
+      <div class="auth-card">
+      <div class="auth-logo" aria-hidden="true"></div>
+      <h2>Welcome</h2>
+      <p class="muted">Log in or create an account to keep your notes and Pokémon team.</p>
       <form id="auth-form">
         <input id="email" type="email" placeholder="Email" required autocomplete="email">
         <input id="password" type="password" placeholder="Password (min 6 chars)" minlength="6" required autocomplete="current-password">
@@ -19,6 +23,7 @@
           <button type="submit" data-action="signup" class="secondary">Sign up</button>
         </div>
       </form>
+      </div>
     </section>
 
     <section id="app-view" hidden>
@@ -27,12 +32,34 @@
         <button id="logout" class="secondary">Log out</button>
       </div>
 
-      <form id="note-form" class="row">
-        <input id="note-text" placeholder="Write a note…" required maxlength="2000">
-        <button type="submit">Add</button>
-      </form>
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="notes" aria-selected="true">Notes</button>
+        <button role="tab" data-tab="pokedex" aria-selected="false">Pokédex</button>
+      </nav>
 
-      <ul id="notes"></ul>
+      <section id="notes-view">
+        <form id="note-form" class="row">
+          <input id="note-text" placeholder="Write a note…" required maxlength="2000">
+          <button type="submit">Add</button>
+        </form>
+
+        <ul id="notes"></ul>
+      </section>
+
+      <section id="pokedex-view" hidden>
+        <form id="poke-search" class="row">
+          <input id="poke-query" list="pokemon-names" placeholder="Search Pokémon, e.g. pikachu" autocomplete="off" required>
+          <button type="submit">Search</button>
+          <button type="button" id="poke-random" class="secondary">Random</button>
+        </form>
+        <datalist id="pokemon-names"></datalist>
+
+        <div id="poke-card" aria-live="polite"></div>
+
+        <h2 class="row between">Your team <span id="team-count" class="muted">0/6</span></h2>
+        <ol id="team"></ol>
+        <p class="muted small">Data from <a href="https://pokeapi.co" target="_blank" rel="noopener">PokeAPI</a>.</p>
+      </section>
     </section>
 
     <p id="msg" role="alert"></p>
