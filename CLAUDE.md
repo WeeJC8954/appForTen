@@ -15,9 +15,15 @@ Requires the Firebase CLI (`npm install -g firebase-tools`) and `firebase login`
 ```powershell
 firebase serve --only hosting       # local dev at http://localhost:5000 (must be served over http — ES modules)
 firebase deploy --only firestore    # push firestore.rules + firestore.indexes.json
-firebase deploy --only hosting      # publish public/ to https://appforten-9ec32.web.app
+firebase deploy --only hosting      # optional: publish public/ to https://appforten-9ec32.web.app
 node --check public/app.js          # quick syntax check (the only "build" step there is)
+gh workflow run pages.yml           # redeploy GitHub Pages by hand
 ```
+
+The main live site is GitHub Pages, at https://weejc8954.github.io/appForTen/. `.github/workflows/pages.yml`
+publishes `public/` on every push to `main` that touches `public/`. That workflow does **not** deploy Firestore
+rules or indexes, so run `firebase deploy --only firestore` yourself after changing them. Pages serves
+the site under the `/appForTen/` subpath, so keep every asset and module path in `public/` relative (no leading `/`).
 
 Local dev talks to the **live** Firebase project — there is no emulator config, so sign-ups and notes created
 while testing are real data.
