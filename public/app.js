@@ -19,6 +19,7 @@ function selectTab(name) {
 onAuthStateChanged(auth, (user) => {
   $("auth-view").hidden = !!user
   $("app-view").hidden = !user
+  showMessage("")
   stopNotes()
   stopPokedex()
   if (!user) return

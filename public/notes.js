@@ -3,6 +3,7 @@ import {
 } from "./firebase.js"
 import { $, showMessage, errorText } from "./ui.js"
 
+const MAX_NOTE = 2000 // keep in sync with the text.size() check in firestore.rules
 const notesCol = collection(db, "notes")
 let currentUser = null
 let unsubscribeNotes = null
@@ -39,10 +40,15 @@ export function stopNotes() {
   $("notes").replaceChildren()
 }
 
+$("note-text").maxLength = MAX_NOTE
+
 $("note-form").addEventListener("submit", async (e) => {
   e.preventDefault()
+  if (!currentUser) return
+  const text = $("note-text").value
+  if (text.length > MAX_NOTE) return showMessage(`Notes can be at most ${MAX_NOTE} characters`, true)
   try {
-    await addDoc(notesCol, { text: $("note-text").value, owner: currentUser.uid, created: serverTimestamp() })
+    await addDoc(notesCol, { text, owner: currentUser.uid, created: serverTimestamp() })
     $("note-text").value = ""
   } catch (err) {
     showMessage(errorText(err), true)
